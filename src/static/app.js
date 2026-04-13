@@ -568,6 +568,9 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         `
         }
+        <button class="share-button" data-activity="${name}" aria-label="Share this activity">
+          📤 Share
+        </button>
       </div>
     `;
 
@@ -587,7 +590,121 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    // Add click handler for share button
+    const shareButton = activityCard.querySelector(".share-button");
+    shareButton.addEventListener("click", () => {
+      shareActivity(name, details);
+    });
+
     activitiesList.appendChild(activityCard);
+  }
+
+  // Function to share an activity
+  function shareActivity(name, details) {
+    const shareTitle = `${name} - Mergington High School`;
+    const shareText = `Check out "${name}" at Mergington High School! ${details.description} Schedule: ${formatSchedule(details)}`;
+    const shareUrl = window.location.href;
+
+    if (navigator.share) {
+      navigator
+        .share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        })
+        .catch((error) => {
+          if (error.name !== "AbortError") {
+            console.error("Error sharing:", error);
+          }
+        });
+    } else {
+      showShareMenu(name, shareText, shareUrl);
+    }
+  }
+
+  // Show share menu popup (fallback when Web Share API is unavailable)
+  function showShareMenu(activityName, shareText, shareUrl) {
+    // Remove any existing share menu
+    const existingMenu = document.getElementById("share-menu");
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+
+    const encodedText = encodeURIComponent(shareText);
+    const encodedUrl = encodeURIComponent(shareUrl);
+
+    const shareMenu = document.createElement("div");
+    shareMenu.id = "share-menu";
+    shareMenu.className = "share-menu modal hidden";
+    shareMenu.innerHTML = `
+      <div class="modal-content share-menu-content">
+        <span class="close-share-menu">&times;</span>
+        <h3>Share "${activityName}"</h3>
+        <div class="share-options">
+          <a href="https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}"
+             target="_blank" rel="noopener noreferrer" class="share-option share-twitter">
+            𝕏 Twitter / X
+          </a>
+          <a href="https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}"
+             target="_blank" rel="noopener noreferrer" class="share-option share-facebook">
+            📘 Facebook
+          </a>
+          <a href="https://wa.me/?text=${encodedText}%20${encodedUrl}"
+             target="_blank" rel="noopener noreferrer" class="share-option share-whatsapp">
+            💬 WhatsApp
+          </a>
+          <button class="share-option share-copy" id="copy-link-btn">
+            🔗 Copy Link
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(shareMenu);
+
+    // Animate in
+    shareMenu.classList.remove("hidden");
+    setTimeout(() => shareMenu.classList.add("show"), 10);
+
+    // Copy link button
+    const copyLinkBtn = shareMenu.querySelector("#copy-link-btn");
+    copyLinkBtn.addEventListener("click", () => {
+      navigator.clipboard
+        .writeText(shareUrl)
+        .then(() => {
+          copyLinkBtn.textContent = "✓ Copied!";
+          setTimeout(() => {
+            copyLinkBtn.textContent = "🔗 Copy Link";
+          }, 2000);
+        })
+        .catch(() => {
+          // Fallback for older browsers
+          const tempInput = document.createElement("input");
+          tempInput.value = shareUrl;
+          document.body.appendChild(tempInput);
+          tempInput.select();
+          document.execCommand("copy");
+          document.body.removeChild(tempInput);
+          copyLinkBtn.textContent = "✓ Copied!";
+          setTimeout(() => {
+            copyLinkBtn.textContent = "🔗 Copy Link";
+          }, 2000);
+        });
+    });
+
+    // Close button
+    const closeBtn = shareMenu.querySelector(".close-share-menu");
+    closeBtn.addEventListener("click", () => {
+      shareMenu.classList.remove("show");
+      setTimeout(() => shareMenu.remove(), 300);
+    });
+
+    // Close when clicking backdrop
+    shareMenu.addEventListener("click", (event) => {
+      if (event.target === shareMenu) {
+        shareMenu.classList.remove("show");
+        setTimeout(() => shareMenu.remove(), 300);
+      }
+    });
   }
 
   // Event listeners for search and filter
